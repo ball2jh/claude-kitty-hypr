@@ -9,7 +9,7 @@ A Claude Code hook script providing visual feedback via Kitty terminal (tab colo
   2. Hook event dispatch — Reads JSON from stdin, updates Kitty + Hyprland
   3. Config loading — Sources `~/.config/claude-kitty-hypr/config` for user overrides
 - **`claude-kitty-hypr.install`** — Pacman `.install` file, delegates to `--setup`/`--uninstall`
-- **`PKGBUILD`** — AUR package definition (not yet submitted to AUR)
+- **`PKGBUILD`** — AUR package definition (may never be submitted to AUR — undecided)
 - **`config.example`** — All configurable variables with defaults
 
 ## Key Design Decisions
