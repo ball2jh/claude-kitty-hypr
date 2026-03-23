@@ -116,10 +116,11 @@ EVENT=$(printf '%s' "$INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null)
 
 # ── Kitty tab helpers ─────────────────────────────────────────────────
 if [[ -n "${KITTY_LISTEN_ON:-}" && -n "${KITTY_WINDOW_ID:-}" ]]; then
-    MATCH="window_id:$KITTY_WINDOW_ID"
-    tab_color() { kitten @ --to "$KITTY_LISTEN_ON" set-tab-color --match "$MATCH" "$@" 2>/dev/null; }
-    tab_title() { kitten @ --to "$KITTY_LISTEN_ON" set-tab-title --match "$MATCH" "$@" 2>/dev/null; }
-    term_bg() { kitten @ --to "$KITTY_LISTEN_ON" set-colors --match "$MATCH" "background=$1" 2>/dev/null; }
+    TAB_MATCH="window_id:$KITTY_WINDOW_ID"
+    WIN_MATCH="id:$KITTY_WINDOW_ID"
+    tab_color() { kitten @ --to "$KITTY_LISTEN_ON" set-tab-color --match "$TAB_MATCH" "$@" 2>/dev/null; }
+    tab_title() { kitten @ --to "$KITTY_LISTEN_ON" set-tab-title --match "$TAB_MATCH" "$@" 2>/dev/null; }
+    term_bg() { kitten @ --to "$KITTY_LISTEN_ON" set-colors --match "$WIN_MATCH" "background=$1" 2>/dev/null; }
     HAS_KITTY=1
 else
     HAS_KITTY=0
