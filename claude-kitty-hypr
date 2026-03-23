@@ -19,6 +19,11 @@ TITLE_DONE="✅ Done"
 
 BORDER_SIZE=5
 
+BG_ACTIVE="#0c1428"
+BG_NOTIFY="#281408"
+BG_DONE="#082810"
+BG_DEFAULT="#000000"
+
 # ── Load user config (overrides defaults) ─────────────────────────────
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/claude-kitty-hypr/config"
 # shellcheck source=/dev/null
@@ -114,6 +119,7 @@ if [[ -n "${KITTY_LISTEN_ON:-}" && -n "${KITTY_WINDOW_ID:-}" ]]; then
     MATCH="window_id:$KITTY_WINDOW_ID"
     tab_color() { kitten @ --to "$KITTY_LISTEN_ON" set-tab-color --match "$MATCH" "$@" 2>/dev/null; }
     tab_title() { kitten @ --to "$KITTY_LISTEN_ON" set-tab-title --match "$MATCH" "$@" 2>/dev/null; }
+    term_bg() { kitten @ --to "$KITTY_LISTEN_ON" set-colors --match "$MATCH" "background=$1" 2>/dev/null; }
     HAS_KITTY=1
 else
     HAS_KITTY=0
@@ -139,11 +145,11 @@ border_reset() {
 case "$EVENT" in
     SessionStart)
         border_color "$COLOR_ACTIVE"
-        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_ACTIVE_HEX"; tab_title "$TITLE_START"; }
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_ACTIVE_HEX"; tab_title "$TITLE_START"; term_bg "$BG_ACTIVE"; }
         ;;
     UserPromptSubmit)
         border_color "$COLOR_ACTIVE"
-        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_ACTIVE_HEX"; tab_title "$TITLE_WORKING"; }
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_ACTIVE_HEX"; tab_title "$TITLE_WORKING"; term_bg "$BG_ACTIVE"; }
         ;;
     PreToolUse)
         TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
@@ -156,15 +162,15 @@ case "$EVENT" in
         ;;
     Notification)
         border_color "$COLOR_NOTIFY"
-        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_NOTIFY_HEX"; tab_title "$TITLE_NOTIFY"; }
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_NOTIFY_HEX"; tab_title "$TITLE_NOTIFY"; term_bg "$BG_NOTIFY"; }
         ;;
     Stop)
         border_color "$COLOR_DONE"
-        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_DONE_HEX"; tab_title "$TITLE_DONE"; }
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_DONE_HEX"; tab_title "$TITLE_DONE"; term_bg "$BG_DONE"; }
         ;;
     SessionEnd)
         border_reset
-        (( HAS_KITTY )) && { tab_color none; tab_title ""; }
+        (( HAS_KITTY )) && { tab_color none; tab_title ""; term_bg "$BG_DEFAULT"; }
         ;;
 esac
 exit 0

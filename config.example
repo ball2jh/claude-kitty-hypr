@@ -19,5 +19,11 @@
 # TITLE_NOTIFY="🔔 Needs Input" # waiting for user
 # TITLE_DONE="✅ Done"           # task complete
 
+# --- Terminal background tint (subtle color wash) ---
+# BG_ACTIVE="#0c1428"   # dark blue tint — working
+# BG_NOTIFY="#281408"   # dark orange tint — needs input
+# BG_DONE="#082810"     # dark green tint — done
+# BG_DEFAULT="#000000"  # your normal background color
+
 # --- Hyprland border ---
 # BORDER_SIZE=5
