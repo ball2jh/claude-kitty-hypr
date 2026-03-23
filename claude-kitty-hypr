@@ -30,8 +30,8 @@ HOOK_CMD="/usr/bin/claude-kitty-hypr"
 
 _hook_entry() {
     local matcher="$1" timeout="$2"
-    printf '[{"matcher":"%s","hooks":[{"type":"command","command":"%s","timeout":%d}]}]' \
-        "$matcher" "$HOOK_CMD" "$timeout"
+    jq -n --arg m "$matcher" --arg cmd "$HOOK_CMD" --argjson t "$timeout" \
+        '[{"matcher":$m,"hooks":[{"type":"command","command":$cmd,"timeout":$t}]}]'
 }
 
 do_setup() {
@@ -62,7 +62,7 @@ do_setup() {
         cleaned=$(jq '
             if .hooks then
                 .hooks |= with_entries(
-                    .value |= map(select(.hooks | all(.command | contains("claude-kitty-hypr") | not)))
+                    .value |= map(select(.hooks | all(.command | . == "/usr/bin/claude-kitty-hypr" | not)))
                 ) | .hooks |= with_entries(select(.value | length > 0))
             else . end
         ' "$SETTINGS_FILE")
@@ -91,7 +91,7 @@ do_uninstall() {
     jq '
         if .hooks then
             .hooks |= with_entries(
-                .value |= map(select(.hooks | all(.command | contains("claude-kitty-hypr") | not)))
+                .value |= map(select(.hooks | all(.command | . == "/usr/bin/claude-kitty-hypr" | not)))
             ) | .hooks |= with_entries(select(.value | length > 0))
             | if (.hooks | length) == 0 then del(.hooks) else . end
         else . end
