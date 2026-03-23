@@ -26,7 +26,7 @@ CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/claude-kitty-hypr/config"
 
 # ── Settings management (--setup / --uninstall) ──────────────────────
 SETTINGS_FILE="${HOME}/.claude/settings.json"
-HOOK_CMD="/usr/bin/claude-kitty-hypr"
+HOOK_CMD="$(readlink -f "$0")"
 
 _hook_entry() {
     local matcher="$1" timeout="$2"
@@ -59,10 +59,10 @@ do_setup() {
         [[ -z "${CLAUDE_KITTY_HYPR_SKIP_BACKUP:-}" ]] && cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak"
         # Remove any existing claude-kitty-hypr entries first, then merge new ones
         local cleaned
-        cleaned=$(jq '
+        cleaned=$(jq --arg cmd "$HOOK_CMD" '
             if .hooks then
                 .hooks |= with_entries(
-                    .value |= map(select(.hooks | all(.command | . == "/usr/bin/claude-kitty-hypr" | not)))
+                    .value |= map(select(.hooks | all(.command | (. == $cmd or endswith("claude-kitty-hypr")) | not)))
                 ) | .hooks |= with_entries(select(.value | length > 0))
             else . end
         ' "$SETTINGS_FILE")
@@ -88,10 +88,10 @@ do_setup() {
 do_uninstall() {
     [[ ! -f "$SETTINGS_FILE" ]] && return
     [[ -z "${CLAUDE_KITTY_HYPR_SKIP_BACKUP:-}" ]] && cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak"
-    jq '
+    jq --arg cmd "$HOOK_CMD" '
         if .hooks then
             .hooks |= with_entries(
-                .value |= map(select(.hooks | all(.command | . == "/usr/bin/claude-kitty-hypr" | not)))
+                .value |= map(select(.hooks | all(.command | (. == $cmd or endswith("claude-kitty-hypr")) | not)))
             ) | .hooks |= with_entries(select(.value | length > 0))
             | if (.hooks | length) == 0 then del(.hooks) else . end
         else . end
