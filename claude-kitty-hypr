@@ -164,7 +164,7 @@ case "$EVENT" in
         ;;
     SessionEnd)
         border_reset
-        (( HAS_KITTY )) && { tab_color; tab_title; }
+        (( HAS_KITTY )) && { tab_color none; tab_title ""; }
         ;;
 esac
 exit 0

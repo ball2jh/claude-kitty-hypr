@@ -39,6 +39,7 @@ Key variables (all optional — defaults are shown in the file):
 - `COLOR_NOTIFY` / `COLOR_NOTIFY_HEX` — orange, needs input
 - `COLOR_DONE` / `COLOR_DONE_HEX` — green, done
 - `TITLE_WORKING`, `TITLE_NOTIFY`, `TITLE_DONE` — tab title strings
+- `TITLE_TOOL_PREFIX` — emoji/text prepended to tool name (default: `🔧 `)
 - `BORDER_SIZE` — Hyprland border width in pixels
 
 ## Manual install (non-Arch)
