@@ -1,0 +1,170 @@
+#!/bin/bash
+# claude-kitty-hypr — Visual feedback for Claude Code in Kitty + Hyprland.
+# Called by Claude Code hooks. Reads JSON from stdin.
+# https://github.com/ball2jh/claude-kitty-hypr
+
+# ── Defaults ──────────────────────────────────────────────────────────
+COLOR_ACTIVE="rgb(2563eb)"
+COLOR_ACTIVE_HEX="#2563eb"
+COLOR_NOTIFY="rgb(ea580c)"
+COLOR_NOTIFY_HEX="#ea580c"
+COLOR_DONE="rgb(16a34a)"
+COLOR_DONE_HEX="#16a34a"
+
+TITLE_START="⚡ Claude"
+TITLE_WORKING="⚡ Claude..."
+TITLE_TOOL_PREFIX="🔧 "
+TITLE_NOTIFY="🔔 Needs Input"
+TITLE_DONE="✅ Done"
+
+BORDER_SIZE=5
+
+# ── Load user config (overrides defaults) ─────────────────────────────
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/claude-kitty-hypr/config"
+# shellcheck source=/dev/null
+[[ -f "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
+
+# ── Settings management (--setup / --uninstall) ──────────────────────
+SETTINGS_FILE="${HOME}/.claude/settings.json"
+HOOK_CMD="/usr/bin/claude-kitty-hypr"
+
+_hook_entry() {
+    local matcher="$1" timeout="$2"
+    printf '[{"matcher":"%s","hooks":[{"type":"command","command":"%s","timeout":%d}]}]' \
+        "$matcher" "$HOOK_CMD" "$timeout"
+}
+
+do_setup() {
+    mkdir -p "$(dirname "$SETTINGS_FILE")"
+    local hooks
+    hooks=$(jq -n \
+        --argjson ss "$(_hook_entry '' 5)" \
+        --argjson ups "$(_hook_entry '' 5)" \
+        --argjson pre "$(_hook_entry 'Bash|Edit|Write|Agent' 5)" \
+        --argjson post "$(_hook_entry 'Bash|Edit|Write|Agent' 5)" \
+        --argjson notif "$(_hook_entry '' 5)" \
+        --argjson stop "$(_hook_entry '' 5)" \
+        --argjson end "$(_hook_entry '' 3)" \
+        '{
+            SessionStart: $ss,
+            UserPromptSubmit: $ups,
+            PreToolUse: $pre,
+            PostToolUse: $post,
+            Notification: $notif,
+            Stop: $stop,
+            SessionEnd: $end
+        }')
+
+    if [[ -f "$SETTINGS_FILE" ]]; then
+        [[ -z "${CLAUDE_KITTY_HYPR_SKIP_BACKUP:-}" ]] && cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak"
+        # Remove any existing claude-kitty-hypr entries first, then merge new ones
+        local cleaned
+        cleaned=$(jq '
+            if .hooks then
+                .hooks |= with_entries(
+                    .value |= map(select(.hooks | all(.command | contains("claude-kitty-hypr") | not)))
+                ) | .hooks |= with_entries(select(.value | length > 0))
+            else . end
+        ' "$SETTINGS_FILE")
+        # Append new hook entries to existing arrays (preserves other tools' hooks)
+        printf '%s' "$cleaned" | jq --argjson new "$hooks" '
+            . as $root |
+            .hooks = (
+                [(.hooks // {}), $new] | reduce .[] as $obj (
+                    {};
+                    reduce ($obj | to_entries[]) as $e (
+                        .;
+                        .[$e.key] = ((.[$e.key] // []) + $e.value)
+                    )
+                )
+            )
+        ' > "$SETTINGS_FILE.tmp" && mv "$SETTINGS_FILE.tmp" "$SETTINGS_FILE"
+    else
+        jq -n --argjson hooks "$hooks" '{hooks: $hooks}' > "$SETTINGS_FILE"
+    fi
+    echo "claude-kitty-hypr: hooks added to $SETTINGS_FILE"
+}
+
+do_uninstall() {
+    [[ ! -f "$SETTINGS_FILE" ]] && return
+    [[ -z "${CLAUDE_KITTY_HYPR_SKIP_BACKUP:-}" ]] && cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak"
+    jq '
+        if .hooks then
+            .hooks |= with_entries(
+                .value |= map(select(.hooks | all(.command | contains("claude-kitty-hypr") | not)))
+            ) | .hooks |= with_entries(select(.value | length > 0))
+            | if (.hooks | length) == 0 then del(.hooks) else . end
+        else . end
+    ' "$SETTINGS_FILE" > "$SETTINGS_FILE.tmp" && mv "$SETTINGS_FILE.tmp" "$SETTINGS_FILE"
+    echo "claude-kitty-hypr: hooks removed from $SETTINGS_FILE"
+}
+
+case "${1:-}" in
+    --setup)    do_setup; exit 0 ;;
+    --uninstall) do_uninstall; exit 0 ;;
+esac
+
+# ── Hook event handling ───────────────────────────────────────────────
+INPUT=$(cat)
+EVENT=$(printf '%s' "$INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null)
+[[ -z "$EVENT" ]] && exit 0
+
+# ── Kitty tab helpers ─────────────────────────────────────────────────
+if [[ -n "${KITTY_LISTEN_ON:-}" && -n "${KITTY_WINDOW_ID:-}" ]]; then
+    MATCH="window_id:$KITTY_WINDOW_ID"
+    tab_color() { kitten @ --to "$KITTY_LISTEN_ON" set-tab-color --match "$MATCH" "$@" 2>/dev/null; }
+    tab_title() { kitten @ --to "$KITTY_LISTEN_ON" set-tab-title --match "$MATCH" "$@" 2>/dev/null; }
+    HAS_KITTY=1
+else
+    HAS_KITTY=0
+fi
+
+# ── Hyprland border helpers ──────────────────────────────────────────
+border_color() {
+    [[ -z "${KITTY_PID:-}" ]] && return
+    local target="pid:$KITTY_PID"
+    hyprctl dispatch setprop "$target" active_border_color "$1" 2>/dev/null
+    hyprctl dispatch setprop "$target" inactive_border_color "$1" 2>/dev/null
+    hyprctl dispatch setprop "$target" border_size "$BORDER_SIZE" 2>/dev/null
+}
+border_reset() {
+    [[ -z "${KITTY_PID:-}" ]] && return
+    local target="pid:$KITTY_PID"
+    hyprctl dispatch setprop "$target" active_border_color "unset" 2>/dev/null
+    hyprctl dispatch setprop "$target" inactive_border_color "unset" 2>/dev/null
+    hyprctl dispatch setprop "$target" border_size "unset" 2>/dev/null
+}
+
+# ── Dispatch ─────────────────────────────────────────────────────────
+case "$EVENT" in
+    SessionStart)
+        border_color "$COLOR_ACTIVE"
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_ACTIVE_HEX"; tab_title "$TITLE_START"; }
+        ;;
+    UserPromptSubmit)
+        border_color "$COLOR_ACTIVE"
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_ACTIVE_HEX"; tab_title "$TITLE_WORKING"; }
+        ;;
+    PreToolUse)
+        TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+        border_color "$COLOR_ACTIVE"
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_ACTIVE_HEX"; tab_title "${TITLE_TOOL_PREFIX}${TOOL:-working}"; }
+        ;;
+    PostToolUse)
+        border_color "$COLOR_ACTIVE"
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_ACTIVE_HEX"; tab_title "$TITLE_START"; }
+        ;;
+    Notification)
+        border_color "$COLOR_NOTIFY"
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_NOTIFY_HEX"; tab_title "$TITLE_NOTIFY"; }
+        ;;
+    Stop)
+        border_color "$COLOR_DONE"
+        (( HAS_KITTY )) && { tab_color active_bg="$COLOR_DONE_HEX"; tab_title "$TITLE_DONE"; }
+        ;;
+    SessionEnd)
+        border_reset
+        (( HAS_KITTY )) && { tab_color; tab_title; }
+        ;;
+esac
+exit 0
