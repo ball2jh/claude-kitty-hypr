@@ -1,0 +1,23 @@
+# claude-kitty-hypr configuration
+# Copy this file to ~/.config/claude-kitty-hypr/config and edit as desired.
+# All values below are the defaults — only override what you want to change.
+
+# --- Hyprland border colors (rgb format for hyprctl) ---
+# COLOR_ACTIVE="rgb(2563eb)"    # blue — working/processing
+# COLOR_NOTIFY="rgb(ea580c)"    # orange — needs user input
+# COLOR_DONE="rgb(16a34a)"      # green — task complete
+
+# --- Kitty tab colors (hex format) ---
+# COLOR_ACTIVE_HEX="#2563eb"
+# COLOR_NOTIFY_HEX="#ea580c"
+# COLOR_DONE_HEX="#16a34a"
+
+# --- Tab titles ---
+# TITLE_START="⚡ Claude"       # session start
+# TITLE_WORKING="⚡ Claude..."  # processing a prompt
+# TITLE_TOOL_PREFIX="🔧 "       # prefix for tool name (e.g. "🔧 Bash")
+# TITLE_NOTIFY="🔔 Needs Input" # waiting for user
+# TITLE_DONE="✅ Done"           # task complete
+
+# --- Hyprland border ---
+# BORDER_SIZE=5
