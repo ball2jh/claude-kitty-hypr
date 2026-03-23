@@ -1,0 +1,41 @@
+# claude-kitty-hypr.install — pacman post/pre hooks for settings.json management
+
+_get_user_home() {
+    local user="${SUDO_USER:-${DOAS_USER:-}}"
+    if [[ -z "$user" ]]; then
+        user=$(logname 2>/dev/null) || true
+    fi
+    if [[ -z "$user" || "$user" == "root" ]]; then
+        echo "WARNING: Could not determine target user." >&2
+        echo "Run 'claude-kitty-hypr --setup' manually to add hooks to Claude Code settings." >&2
+        return 1
+    fi
+    eval echo "~$user"
+}
+
+post_install() {
+    local home
+    home=$(_get_user_home) || return 0
+    HOME="$home" /usr/bin/claude-kitty-hypr --setup
+    echo ""
+    echo "Optional: copy config to customize colors/titles:"
+    echo "  mkdir -p ~/.config/claude-kitty-hypr"
+    echo "  cp /usr/share/claude-kitty-hypr/config.example ~/.config/claude-kitty-hypr/config"
+}
+
+pre_remove() {
+    local home
+    home=$(_get_user_home) || return 0
+    HOME="$home" /usr/bin/claude-kitty-hypr --uninstall
+}
+
+post_upgrade() {
+    local home
+    home=$(_get_user_home) || return 0
+    local settings="$home/.claude/settings.json"
+    # Single backup before remove+install cycle
+    [[ -f "$settings" ]] && cp "$settings" "${settings}.bak"
+    # Use env var to tell --setup/--uninstall to skip their own backups
+    CLAUDE_KITTY_HYPR_SKIP_BACKUP=1 HOME="$home" /usr/bin/claude-kitty-hypr --uninstall
+    CLAUDE_KITTY_HYPR_SKIP_BACKUP=1 HOME="$home" /usr/bin/claude-kitty-hypr --setup
+}
